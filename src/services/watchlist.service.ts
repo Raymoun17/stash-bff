@@ -50,4 +50,9 @@ export class WatchlistService {
             deleted: true,
         };
     }
+
+    static async getPriceHistory(userId: string, watchlistItemId: string) {
+        await this.getById(userId, watchlistItemId);
+        return WatchlistRepository.findPriceHistory(watchlistItemId);
+    }
 }

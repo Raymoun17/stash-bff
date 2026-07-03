@@ -79,6 +79,12 @@ export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
         });
     });
 
+    watchlistRoutes.get("/:id/price-history", async (c) => {
+        const user = c.get("user");
+        const history = await WatchlistService.getPriceHistory(user.id, c.req.param("id"));
+        return c.json({ data: history, meta: { count: history.length } });
+    });
+
     watchlistRoutes.get("/:id", async (c) => {
         const user = c.get("user");
         const id = c.req.param("id");

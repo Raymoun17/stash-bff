@@ -9,8 +9,9 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --platform node --target node22 --out-dir dist --clean",
+    "build": "tsup src/index.ts src/price-refresher.ts --format esm --platform node --target node22 --out-dir dist --clean",
     "start": "node dist/index.js",
+    "start:price-refresher": "node dist/price-refresher.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

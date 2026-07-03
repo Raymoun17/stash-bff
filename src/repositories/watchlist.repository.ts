@@ -15,6 +15,58 @@ type CreateWatchlistItemData = {
 };
 
 export class WatchlistRepository {
+    static findRefreshBatch(afterId: string | undefined, take: number) {
+        return prisma.watchlistItem.findMany({
+            orderBy: { id: "asc" },
+            take,
+            ...(afterId ? { cursor: { id: afterId }, skip: 1 } : {}),
+        });
+    }
+
+    static recordRefreshSuccess(id: string, preview: {
+        url: string; title: string; imageUrl: string | null;
+        currentPrice: number | null; salePrice: number | null;
+        currency: string; status: string; metadata: Record<string, unknown> | null;
+    }, effectivePrice: number, attemptedAt: Date) {
+        return prisma.$transaction(async (tx) => {
+            const item = await tx.watchlistItem.update({
+                where: { id },
+                data: {
+                    url: preview.url, title: preview.title, imageUrl: preview.imageUrl,
+                    currentPrice: preview.currentPrice, salePrice: preview.salePrice,
+                    currency: preview.currency, status: preview.status,
+                    metadata: preview.metadata === null ? Prisma.JsonNull : preview.metadata as Prisma.InputJsonValue,
+                    lastRefreshAttemptAt: attemptedAt, lastRefreshedAt: attemptedAt,
+                    lastRefreshError: null, consecutiveRefreshFailures: 0,
+                },
+            });
+            await tx.priceSnapshot.create({
+                data: { watchlistItemId: id, price: effectivePrice, currency: preview.currency },
+            });
+            return item;
+        });
+    }
+
+    static recordRefreshWithoutPrice(id: string, attemptedAt: Date) {
+        return prisma.watchlistItem.update({ where: { id }, data: {
+            lastRefreshAttemptAt: attemptedAt, lastRefreshedAt: attemptedAt,
+            lastRefreshError: null, consecutiveRefreshFailures: 0,
+        }});
+    }
+
+    static recordRefreshFailure(id: string, error: string, attemptedAt: Date) {
+        return prisma.watchlistItem.update({ where: { id }, data: {
+            lastRefreshAttemptAt: attemptedAt, lastRefreshError: error,
+            consecutiveRefreshFailures: { increment: 1 },
+        }});
+    }
+
+    static findPriceHistory(id: string) {
+        return prisma.priceSnapshot.findMany({
+            where: { watchlistItemId: id }, orderBy: { createdAt: "asc" },
+            select: { id: true, price: true, currency: true, createdAt: true },
+        });
+    }
     static create(data: CreateWatchlistItemData) {
         return prisma.watchlistItem.create({
             data: {

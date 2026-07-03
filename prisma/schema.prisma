@@ -45,6 +45,10 @@ model WatchlistItem {
   metadata     Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  lastRefreshAttemptAt DateTime?
+  lastRefreshedAt DateTime?
+  lastRefreshError String?
+  consecutiveRefreshFailures Int @default(0)
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   priceSnapshots PriceSnapshot[]
