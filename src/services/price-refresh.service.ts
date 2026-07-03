@@ -1,5 +1,7 @@
 import type { PreviewProductExecutor } from "../application/product-preview/preview-product.use-case";
 import { WatchlistRepository } from "../repositories/watchlist.repository";
+import { NotificationRuleRepository } from "../repositories/notification-rule.repository";
+import { NotificationEvaluator } from "./notification-evaluator.service";
 
 export type RefreshSummary = { processed: number; succeeded: number; failed: number };
 
@@ -19,13 +21,21 @@ export class PriceRefreshService {
                     try {
                         const preview = await this.previewProduct.execute({ url: item.url });
                         const effectivePrice = preview.salePrice ?? preview.currentPrice;
-                        if (effectivePrice !== null && preview.currency) {
-                            await WatchlistRepository.recordRefreshSuccess(
-                                item.id, { ...preview, currency: preview.currency }, effectivePrice, attemptedAt
-                            );
-                        } else {
-                            await WatchlistRepository.recordRefreshWithoutPrice(item.id, attemptedAt);
-                        }
+                        const rules = await NotificationRuleRepository.findEnabledByWatchlistItemId(item.id);
+                        const evaluations = NotificationEvaluator.evaluate(
+                            rules,
+                            {
+                                effectivePrice: item.salePrice === null
+                                    ? item.currentPrice === null ? null : Number(item.currentPrice)
+                                    : Number(item.salePrice),
+                                currency: item.currency,
+                                status: item.status,
+                            },
+                            { effectivePrice, currency: preview.currency, status: preview.status }
+                        );
+                        await WatchlistRepository.recordRefreshSuccess(
+                            item.id, preview, effectivePrice, attemptedAt, evaluations
+                        );
                         summary.succeeded++;
                     } catch (cause) {
                         const error = sanitizeRefreshError(cause);

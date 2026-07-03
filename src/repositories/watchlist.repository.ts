@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db/prisma";
+import type { RuleEvaluation } from "../domain/notifications/notification-condition";
 
 type CreateWatchlistItemData = {
     userId: string;
@@ -26,8 +27,8 @@ export class WatchlistRepository {
     static recordRefreshSuccess(id: string, preview: {
         url: string; title: string; imageUrl: string | null;
         currentPrice: number | null; salePrice: number | null;
-        currency: string; status: string; metadata: Record<string, unknown> | null;
-    }, effectivePrice: number, attemptedAt: Date) {
+        currency: string | null; status: string; metadata: Record<string, unknown> | null;
+    }, effectivePrice: number | null, attemptedAt: Date, evaluations: RuleEvaluation[] = []) {
         return prisma.$transaction(async (tx) => {
             const item = await tx.watchlistItem.update({
                 where: { id },
@@ -40,18 +41,27 @@ export class WatchlistRepository {
                     lastRefreshError: null, consecutiveRefreshFailures: 0,
                 },
             });
-            await tx.priceSnapshot.create({
-                data: { watchlistItemId: id, price: effectivePrice, currency: preview.currency },
-            });
+            if (effectivePrice !== null && preview.currency) {
+                await tx.priceSnapshot.create({
+                    data: { watchlistItemId: id, price: effectivePrice, currency: preview.currency },
+                });
+            }
+            for (const evaluation of evaluations) {
+                await tx.notificationRule.update({
+                    where: { id: evaluation.ruleId },
+                    data: { lastMatched: evaluation.matched },
+                });
+                if (evaluation.notification) {
+                    await tx.notification.create({
+                        data: {
+                            ...evaluation.notification,
+                            ruleId: evaluation.ruleId,
+                        },
+                    });
+                }
+            }
             return item;
         });
-    }
-
-    static recordRefreshWithoutPrice(id: string, attemptedAt: Date) {
-        return prisma.watchlistItem.update({ where: { id }, data: {
-            lastRefreshAttemptAt: attemptedAt, lastRefreshedAt: attemptedAt,
-            lastRefreshError: null, consecutiveRefreshFailures: 0,
-        }});
     }
 
     static recordRefreshFailure(id: string, error: string, attemptedAt: Date) {

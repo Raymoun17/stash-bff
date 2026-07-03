@@ -13,6 +13,8 @@ import authRoutes from "./routes/auth.routes";
 import healthRoutes from "./routes/health.routes";
 import { createWatchlistRoutes } from "./routes/watchlist.routes";
 import type { AppBindings } from "./types/hono";
+import notificationRoutes from "./routes/notifications.routes";
+import notificationRuleRoutes from "./routes/notification-rules.routes";
 
 export type AppDependencies = {
     previewProductUseCase?: PreviewProductExecutor;
@@ -55,6 +57,8 @@ export function createApp(dependencies: AppDependencies = {}) {
     app.route("/health", healthRoutes);
     app.route("/auth", authRoutes);
     app.route("/watchlist", createWatchlistRoutes(previewProduct));
+    app.route("/notification-rules", notificationRuleRoutes);
+    app.route("/notifications", notificationRoutes);
 
     app.notFound((c) => {
         return c.json(
