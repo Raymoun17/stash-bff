@@ -1,17 +1,18 @@
-export type ProductIntegrationErrorCode =
-    | "UNSUPPORTED_SOURCE"
-    | "PRODUCT_DATA_UNAVAILABLE"
-    | "SOURCE_BLOCKED"
-    | "UPSTREAM_FAILURE"
-    | "INTEGRATION_TIMEOUT";
+import {
+    ProductPreviewError,
+    type ProductPreviewErrorCode,
+} from "../application/product-preview/preview-product.errors";
 
-export class ProductIntegrationError extends Error {
+export type ProductIntegrationErrorCode = ProductPreviewErrorCode;
+
+/** @deprecated Prefer ProductPreviewError in new application-layer code. */
+export class ProductIntegrationError extends ProductPreviewError {
     constructor(
         readonly code: ProductIntegrationErrorCode,
         message: string,
         options?: ErrorOptions
     ) {
-        super(message, options);
+        super(code, message, options);
         this.name = "ProductIntegrationError";
     }
 }

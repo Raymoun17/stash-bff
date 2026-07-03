@@ -1,36 +1,17 @@
-export type ProductPreview = {
-    url: string;
-    retailer: string;
-    title: string;
-    imageUrl: string | null;
-    currentPrice: number | null;
-    salePrice: number | null;
-    currency: string | null;
-    status: "active" | "unavailable";
-    metadata: Record<string, unknown> | null;
-};
+import type { ProductPreview } from "../domain/product/product-preview";
 
-export type ProductSource = {
-    requestedUrl: string;
-    finalUrl: string;
-    html: string;
-};
-
-export type ContentFetchOptions = {
-    timeoutMs?: number;
-    renderDelayMs?: number;
-    dismissConsent?: boolean;
-    allowedNavigationHosts?: readonly string[];
-};
-
-export interface ProductContentFetcher {
-    fetch(url: URL, options?: ContentFetchOptions): Promise<ProductSource>;
-    close?(): Promise<void>;
-}
-
-export interface ProductParser {
-    parse(source: ProductSource): ProductPreview;
-}
+export type {
+    ContentFetchOptions,
+    ProductContentFetcher,
+    ProductContentSource,
+    ProductContentSource as ProductSource,
+} from "../domain/product/product-content";
+export type {
+    ProductParser,
+    ProductPreview,
+} from "../domain/product/product-preview";
+export type { ProductStatus } from "../domain/product/product-status";
+export type { RetailerId } from "../domain/product/retailer-id";
 
 export interface ProductIntegration {
     readonly id: string;

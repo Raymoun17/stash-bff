@@ -2,7 +2,7 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import app from "./app";
 import { prisma } from "./db/prisma";
-import { defaultProductIntegrationRegistry } from "./integrations/default.registry";
+import { defaultPreviewProductUseCase } from "./integrations/default.registry";
 
 const port = Number(process.env.PORT ?? 3000);
 
@@ -26,7 +26,7 @@ function shutdown() {
     shuttingDown = true;
     server.close((serverError) => {
         void Promise.allSettled([
-            defaultProductIntegrationRegistry.close(),
+            defaultPreviewProductUseCase.close(),
             prisma.$disconnect(),
         ]).then(() => {
             if (serverError) {

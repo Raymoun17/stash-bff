@@ -1,4 +1,4 @@
-import { defaultProductIntegrationRegistry } from "../src/integrations/default.registry";
+import { defaultPreviewProductUseCase } from "../src/integrations/default.registry";
 
 const url = process.argv[2] ?? process.env.ZARA_SMOKE_URL;
 
@@ -9,8 +9,8 @@ if (!url) {
 }
 
 try {
-    const preview = await defaultProductIntegrationRegistry.preview(url);
+    const preview = await defaultPreviewProductUseCase.execute({ url });
     console.log(JSON.stringify(preview, null, 2));
 } finally {
-    await defaultProductIntegrationRegistry.close();
+    await defaultPreviewProductUseCase.close();
 }

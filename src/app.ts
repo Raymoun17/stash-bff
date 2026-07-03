@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { defaultProductIntegrationRegistry } from "./integrations/default.registry";
+import type { PreviewProductExecutor } from "./application/product-preview/preview-product.use-case";
 import {
-    ProductIntegrationError,
-    type ProductIntegrationErrorCode,
-} from "./integrations/integration-error";
+    ProductPreviewError,
+    type ProductPreviewErrorCode,
+} from "./application/product-preview/preview-product.errors";
+import { defaultPreviewProductUseCase } from "./integrations/default.registry";
 import type { ProductIntegrationRegistry } from "./integrations/integration.registry";
 import { AppHTTPException } from "./lib/http-error";
 import authRoutes from "./routes/auth.routes";
@@ -14,11 +15,13 @@ import { createWatchlistRoutes } from "./routes/watchlist.routes";
 import type { AppBindings } from "./types/hono";
 
 export type AppDependencies = {
+    previewProductUseCase?: PreviewProductExecutor;
+    /** @deprecated Inject previewProductUseCase in new tests and callers. */
     productIntegrationRegistry?: ProductIntegrationRegistry;
 };
 
 const INTEGRATION_ERROR_STATUS: Record<
-    ProductIntegrationErrorCode,
+    ProductPreviewErrorCode,
     422 | 502 | 504
 > = {
     UNSUPPORTED_SOURCE: 422,
@@ -30,29 +33,28 @@ const INTEGRATION_ERROR_STATUS: Record<
 
 export function createApp(dependencies: AppDependencies = {}) {
     const app = new Hono<AppBindings>();
-    const productIntegrationRegistry =
-        dependencies.productIntegrationRegistry ??
-        defaultProductIntegrationRegistry;
+    const previewProduct =
+        dependencies.previewProductUseCase ??
+        (dependencies.productIntegrationRegistry
+            ? {
+                  execute: ({ url }: { url: string }) =>
+                      dependencies.productIntegrationRegistry!.preview(url),
+              }
+            : defaultPreviewProductUseCase);
+
+    const corsOrigins = process.env.CORS_ORIGINS?.split(",").filter(Boolean);
 
     app.use(
         "*",
         cors({
-            origin: [
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "http://localhost:5173",
-                "http://127.0.0.1:3001", 
-            ],
+            origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
             credentials: true,
         })
     );
 
     app.route("/health", healthRoutes);
     app.route("/auth", authRoutes);
-    app.route(
-        "/watchlist",
-        createWatchlistRoutes(productIntegrationRegistry)
-    );
+    app.route("/watchlist", createWatchlistRoutes(previewProduct));
 
     app.notFound((c) => {
         return c.json(
@@ -67,7 +69,7 @@ export function createApp(dependencies: AppDependencies = {}) {
     });
 
     app.onError((error, c) => {
-        if (error instanceof ProductIntegrationError) {
+        if (error instanceof ProductPreviewError) {
             return c.json(
                 {
                     error: {

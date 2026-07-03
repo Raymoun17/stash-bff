@@ -5,6 +5,8 @@ import type {
 } from "../../src/integrations/contracts";
 import { ProductIntegrationRegistry } from "../../src/integrations/integration.registry";
 import { HmIntegration } from "../../src/integrations/hm/hm.integration";
+import { RwcoIntegration } from "../../src/integrations/rwco/rwco.integration";
+import { TristanIntegration } from "../../src/integrations/tristan/tristan.integration";
 import { ZaraIntegration } from "../../src/integrations/zara/zara.integration";
 
 const fetcher: ProductContentFetcher = {
@@ -22,7 +24,9 @@ const parser: ProductParser = {
 describe("ProductIntegrationRegistry", () => {
     const zara = new ZaraIntegration(fetcher, parser);
     const hm = new HmIntegration(fetcher, parser);
-    const registry = new ProductIntegrationRegistry([zara, hm]);
+    const tristan = new TristanIntegration(fetcher, parser);
+    const rwco = new RwcoIntegration(fetcher, parser);
+    const registry = new ProductIntegrationRegistry([zara, hm, tristan, rwco]);
 
     test("resolves valid Zara product URLs", () => {
         const result = registry.resolve(
@@ -46,6 +50,40 @@ describe("ProductIntegrationRegistry", () => {
         );
 
         expect(result.integration.id).toBe("hm");
+    });
+
+    test("resolves valid Tristan product URLs", () => {
+        const result = registry.resolve(
+            "https://www.tristanstyle.com/products/open-back-maxi-dress?variant=47275822874786"
+        );
+
+        expect(result.integration.id).toBe("tristan");
+    });
+
+    test.each([
+        "http://www.tristanstyle.com/products/open-back-maxi-dress",
+        "https://www.tristanstyle.com.evil.example/products/open-back-maxi-dress",
+        "https://www.tristanstyle.com/collections/dresses",
+        "https://user:password@www.tristanstyle.com/products/open-back-maxi-dress",
+    ])("rejects unsupported Tristan URL %s", (url) => {
+        expect(() => registry.resolve(url)).toThrow();
+    });
+
+    test("resolves valid RW&CO. product URLs", () => {
+        const result = registry.resolve(
+            "https://www.rw-co.com/products/short-sleeve-knit-geo-print-shirt-494626?variant=62406934823283"
+        );
+
+        expect(result.integration.id).toBe("rwco");
+    });
+
+    test.each([
+        "http://www.rw-co.com/products/short-sleeve-knit-geo-print-shirt-494626",
+        "https://www.rw-co.com.evil.example/products/short-sleeve-knit-geo-print-shirt-494626",
+        "https://www.rw-co.com/collections/men",
+        "https://user:password@www.rw-co.com/products/short-sleeve-knit-geo-print-shirt-494626",
+    ])("rejects unsupported RW&CO. URL %s", (url) => {
+        expect(() => registry.resolve(url)).toThrow();
     });
 
     test.each([

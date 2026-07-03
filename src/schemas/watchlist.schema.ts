@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const previewWatchlistItemSchema = z.object({
     url: z.url(),
+    extractionMode: z
+        .enum(["standard", "ai_fallback", "ai_only"])
+        .default("standard"),
 });
 
 export const createWatchlistItemSchema = z.object({

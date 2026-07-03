@@ -84,6 +84,7 @@ export class RemoteProductFetcher implements ProductContentFetcher {
                     maxHtmlBytes: this.maxHtmlBytes,
                     locale: this.locale,
                     timezone: this.timezone,
+                    waitUntil: options.waitUntil ?? "domcontentloaded",
                 }),
                 signal: controller.signal,
             });

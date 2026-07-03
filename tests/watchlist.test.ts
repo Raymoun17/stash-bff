@@ -1,18 +1,19 @@
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
 import {
     type ApiClient,
     createAuthenticatedClient,
 } from "./helpers/api-client";
 import { createApp } from "../src/app";
-import { ProductIntegrationRegistry } from "../src/integrations/integration.registry";
-import type { ProductIntegration } from "../src/integrations/contracts";
+import { UnsupportedSourceError } from "../src/integrations/integration-error";
 
-const fixtureIntegration: ProductIntegration = {
-    id: "fixture-zara",
-    supports: (url) =>
-        url.protocol === "https:" && url.hostname === "www.zara.com",
-    preview: async (url) => ({
-        url: url.href,
+const executePreview = vi.fn(async ({ url }: { url: string }) => {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname !== "www.zara.com") {
+        throw new UnsupportedSourceError();
+    }
+
+    return {
+        url: parsedUrl.href,
         retailer: "zara",
         title: "Example Zara Product",
         imageUrl: "https://static.zara.net/example.jpg",
@@ -21,13 +22,11 @@ const fixtureIntegration: ProductIntegration = {
         currency: "CAD",
         status: "active",
         metadata: { productId: "12345678", source: "fixture" },
-    }),
-};
+    } as const;
+});
 
 const app = createApp({
-    productIntegrationRegistry: new ProductIntegrationRegistry([
-        fixtureIntegration,
-    ]),
+    previewProductUseCase: { execute: executePreview },
 });
 
 describe("Watchlist API", () => {
@@ -50,6 +49,24 @@ describe("Watchlist API", () => {
         expect(json.data.url).toContain("zara.com");
         expect(json.data.retailer).toBe("zara");
         expect(json.data.currentPrice).toBe(129.99);
+        expect(executePreview).toHaveBeenCalledWith({
+            url: "https://www.zara.com/ca/en/example-product-p01234567.html",
+            extractionMode: "standard",
+        });
+    });
+
+    test("POST /watchlist/preview accepts explicit standard extraction", async () => {
+        const { status, json } = await client.request("/watchlist/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                url: "https://www.zara.com/ca/en/example-product-p01234567.html",
+                extractionMode: "standard",
+            }),
+        });
+
+        expect(status).toBe(200);
+        expect(json.data.retailer).toBe("zara");
     });
 
     test("POST /watchlist/preview rejects unsupported sources", async () => {

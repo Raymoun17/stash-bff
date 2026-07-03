@@ -1,17 +1,14 @@
 # stash-bff
 
-Node.js, Hono, and Prisma backend for Stash. Retailer pages can be loaded by
-the in-process Playwright fetcher or a private Camoufox scraper worker; product
-parsing remains in this service.
+Node.js, Hono, and Prisma backend for Stash. Retailer pages are loaded by the
+private Camoufox scraper worker; product parsing remains in this service.
 
 ## Development
 
-Install dependencies and Chromium:
+Install dependencies:
 
 ```sh
 npm install
-npm run playwright:install
-npm run playwright:check
 ```
 
 Start the development server:
@@ -31,38 +28,36 @@ npm run typecheck
 npm run build
 ```
 
-## Product integrations
+## Product preview architecture
 
-`POST /watchlist/preview` supports public Zara and H&M product URLs. Retailer
-integrations and TypeScript parsers remain in the BFF. Set `SCRAPER_MODE` to
-choose how rendered HTML is fetched.
+`POST /watchlist/preview` supports public Zara, H&M, Tristan, and RW&CO.
+product URLs.
+The route delegates preview work to `PreviewProductUseCase`: it resolves a
+`RetailerProfile`, fetches rendered HTML through `ProductContentFetcher`, calls
+the profile's deterministic `ProductExtractor`, and validates the normalized
+`ProductPreview`. Profiles own URL/final-URL rules, navigation hosts, fetch
+settings, and extractor selection. Existing TypeScript parsers remain behind
+the deterministic extractors.
 
-Local mode is the default and retains the existing lazily launched Chromium
-browser with an isolated context per request:
+`WatchlistService` is separate from this pipeline and only coordinates
+persisted create/list/get/delete operations with `WatchlistRepository`.
+`extractionMode` accepts `standard`, `ai_fallback`, and `ai_only` for future UI
+support. AI extraction is not implemented; both AI modes currently use the
+same deterministic pipeline as `standard`.
+
+Rendered HTML always comes from the private FastAPI/Camoufox service in
+`../scraper-worker`.
+Start that service on port 8000, then configure:
 
 ```sh
-SCRAPER_MODE=local
-INTEGRATION_TIMEOUT_MS=20000
-INTEGRATION_MAX_CONCURRENCY=2
-INTEGRATION_MAX_HTML_BYTES=10000000
-```
-
-Remote mode calls the private FastAPI/Camoufox service in
-`../scraper-worker`. Start that service on port 8000, then configure:
-
-```sh
-SCRAPER_MODE=remote
-SCRAPER_WORKER_URL=http://localhost:8000
+SCRAPER_WORKER_URL=http://scraper-worker:8000
 SCRAPER_SERVICE_TOKEN=dev-secret-change-me
 INTEGRATION_TIMEOUT_MS=20000
 INTEGRATION_MAX_HTML_BYTES=10000000
 ```
 
 The service token must match the worker. Use a strong secret and a private
-service network in production; do not expose the scraper worker publicly. If
-remote mode is unavailable, switching `SCRAPER_MODE` back to `local` restores
-the in-process Playwright path. There is no automatic per-request fallback,
-which avoids silently doubling retailer traffic after worker failures.
+service network in production; do not expose the scraper worker publicly.
 
 Run the opt-in live smoke check with a public Zara product URL:
 
@@ -71,11 +66,12 @@ npm run test:integration:zara -- "https://www.zara.com/...-p01234567.html"
 ```
 
 Normal tests use fixtures or mocked HTTP and do not contact retailers or launch
-Chromium/Camoufox.
+Camoufox.
 
 ## Docker
 
-For a complete deployment, use the repository-level `compose.yaml`. It runs
+For a complete deployment, use the infrastructure repository at
+[c:\Dev\Projects\stash-infra](c:\Dev\Projects\stash-infra) (or the equivalent clone of that repo). It runs
 PostgreSQL migrations automatically, configures remote scraper mode, and keeps
 the BFF private behind the UI's `/api` proxy.
 
@@ -87,18 +83,13 @@ docker build --target runtime -t stash-bff .
 docker run --init --ipc=host --env-file .env -p 3000:3000 stash-bff
 ```
 
+For local app-only development, the BFF can also be started directly with:
+
+```sh
+npm install
+npm run dev
+```
+
 When proxying the BFF under a URL prefix, set `REFRESH_COOKIE_PATH` to the
 browser-visible auth path. `REFRESH_COOKIE_SECURE` overrides the production
 default and should be `true` for HTTPS.
-
-## Docker development with production parity
-
-After the database and scraper worker stacks are running, use:
-
-```bash
-docker compose up -d --watch
-```
-
-Editing a tracked project file rebuilds and recreates the production image and
-runs pending Prisma migrations before starting it. There are no source-code or
-`.env` bind mounts in the container.

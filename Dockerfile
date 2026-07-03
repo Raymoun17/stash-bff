@@ -1,8 +1,10 @@
-FROM mcr.microsoft.com/playwright:v1.61.1-noble AS dependencies
+FROM node:24-bookworm-slim AS dependencies
 
 WORKDIR /app
 
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -32,7 +34,10 @@ FROM build AS runtime
 
 ENV NODE_ENV=production
 
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev \
+    && groupadd --system pwuser \
+    && useradd --system --gid pwuser --create-home --home-dir /home/pwuser --shell /bin/bash pwuser \
+    && chown -R pwuser:pwuser /app
 
 USER pwuser
 

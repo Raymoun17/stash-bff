@@ -1,6 +1,7 @@
 import type { ProductIntegration, ProductPreview } from "./contracts";
 import { UnsupportedSourceError } from "./integration-error";
 
+/** @deprecated PreviewProductUseCase and RetailerRegistry own new preview flows. */
 export class ProductIntegrationRegistry {
     constructor(private readonly integrations: readonly ProductIntegration[]) {}
 

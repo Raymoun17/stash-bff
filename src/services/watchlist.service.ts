@@ -2,16 +2,8 @@ import type { Prisma } from "@prisma/client";
 import type { CreateWatchlistItemInput } from "../schemas/watchlist.schema";
 import { NotFoundError } from "../lib/http-error";
 import { WatchlistRepository } from "../repositories/watchlist.repository";
-import type { ProductIntegrationRegistry } from "../integrations/integration.registry";
 
 export class WatchlistService {
-    static async preview(
-        url: string,
-        integrationRegistry: ProductIntegrationRegistry
-    ) {
-        return integrationRegistry.preview(url);
-    }
-
     static async create(userId: string, input: CreateWatchlistItemInput) {
         return WatchlistRepository.create({
             userId,

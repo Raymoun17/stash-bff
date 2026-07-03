@@ -6,12 +6,10 @@ import {
 } from "../schemas/watchlist.schema";
 import { WatchlistService } from "../services/watchlist.service";
 import type { AppBindings } from "../types/hono";
-import type { ProductIntegrationRegistry } from "../integrations/integration.registry";
-import { defaultProductIntegrationRegistry } from "../integrations/default.registry";
+import type { PreviewProductExecutor } from "../application/product-preview/preview-product.use-case";
+import { defaultPreviewProductUseCase } from "../integrations/default.registry";
 
-export function createWatchlistRoutes(
-    integrationRegistry: ProductIntegrationRegistry
-) {
+export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
     const watchlistRoutes = new Hono<AppBindings>();
 
     watchlistRoutes.use("*", requireAuth);
@@ -33,10 +31,7 @@ export function createWatchlistRoutes(
             );
         }
 
-        const preview = await WatchlistService.preview(
-            parsed.data.url,
-            integrationRegistry
-        );
+        const preview = await previewProduct.execute(parsed.data);
 
         return c.json({
             data: preview,
@@ -109,8 +104,6 @@ export function createWatchlistRoutes(
     return watchlistRoutes;
 }
 
-const watchlistRoutes = createWatchlistRoutes(
-    defaultProductIntegrationRegistry
-);
+const watchlistRoutes = createWatchlistRoutes(defaultPreviewProductUseCase);
 
 export default watchlistRoutes;

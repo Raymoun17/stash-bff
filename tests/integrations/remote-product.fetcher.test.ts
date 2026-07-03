@@ -58,6 +58,7 @@ describe("RemoteProductFetcher", () => {
             maxHtmlBytes: 10_000_000,
             locale: "en-CA",
             timezone: "America/Toronto",
+            waitUntil: "domcontentloaded",
         });
     });
 
