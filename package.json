@@ -1,0 +1,42 @@
+{
+  "name": "stash-bff",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "@hono/node-server": "$@hono/node-server"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --platform node --target node22 --out-dir dist --clean",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "playwright:install": "playwright install chromium",
+    "playwright:check": "tsx scripts/playwright-check.ts",
+    "test:integration:zara": "tsx scripts/zara-smoke.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.14",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "argon2": "^0.44.0",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.27",
+    "jose": "^6.2.3",
+    "playwright": "^1.61.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prisma": "^7.8.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.0.0"
+  }
+}

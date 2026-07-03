@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+coverage/
+
+# Generated Prisma client
+src/generated/prisma/
+
+# Local environment files (keep templates trackable)
+.env*
+!.env.example
+
+# Logs and local tooling
+*.log
+*.tsbuildinfo
+.DS_Store
