@@ -8,6 +8,8 @@ import { WatchlistService } from "../services/watchlist.service";
 import type { AppBindings } from "../types/hono";
 import type { PreviewProductExecutor } from "../application/product-preview/preview-product.use-case";
 import { defaultPreviewProductUseCase } from "../integrations/default.registry";
+import { createNotificationRuleSchema } from "../schemas/notification-rule.schema";
+import { NotificationRuleService } from "../services/notification-rule.service";
 
 export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
     const watchlistRoutes = new Hono<AppBindings>();
@@ -83,6 +85,20 @@ export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
         const user = c.get("user");
         const history = await WatchlistService.getPriceHistory(user.id, c.req.param("id"));
         return c.json({ data: history, meta: { count: history.length } });
+    });
+
+    watchlistRoutes.get("/:id/notification-rules", async (c) => {
+        const rules = await NotificationRuleService.list(c.get("user").id, c.req.param("id"));
+        return c.json({ data: rules, meta: { count: rules.length } });
+    });
+
+    watchlistRoutes.post("/:id/notification-rules", async (c) => {
+        const parsed = createNotificationRuleSchema.safeParse(await c.req.json());
+        if (!parsed.success) {
+            return c.json({ error: { code: "VALIDATION_ERROR", message: "Invalid request body", issues: parsed.error.flatten() } }, 400);
+        }
+        const rule = await NotificationRuleService.create(c.get("user").id, c.req.param("id"), parsed.data);
+        return c.json({ data: rule }, 201);
     });
 
     watchlistRoutes.get("/:id", async (c) => {
