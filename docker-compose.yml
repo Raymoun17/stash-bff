@@ -1,0 +1,47 @@
+services:
+  bff:
+    build:
+      context: .
+      target: runtime
+    container_name: stash-bff
+    restart: unless-stopped
+    command: ["sh", "-c", "npx prisma migrate deploy && npm start"]
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://admin:admin@stash-db:5432/stash}
+      JWT_SECRET: ${JWT_SECRET:-stash-local-jwt-secret-change-in-production}
+      REFRESH_COOKIE_PATH: /api/auth
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      SCRAPER_MODE: remote
+      SCRAPER_WORKER_URL: http://stash-scraper-worker:8000
+      SCRAPER_SERVICE_TOKEN: ${SCRAPER_SERVICE_TOKEN:-stash-local-service-token}
+      INTEGRATION_TIMEOUT_MS: ${INTEGRATION_TIMEOUT_MS:-20000}
+      INTEGRATION_MAX_HTML_BYTES: ${INTEGRATION_MAX_HTML_BYTES:-10000000}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - stash-network
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          ignore:
+            - node_modules/
+            - dist/
+            - coverage/
+            - .git/
+            - .env*
+            - "*.log"
+            - "*.tsbuildinfo"
+
+networks:
+  stash-network:
+    external: true
+    name: stash-network

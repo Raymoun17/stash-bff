@@ -90,3 +90,15 @@ docker run --init --ipc=host --env-file .env -p 3000:3000 stash-bff
 When proxying the BFF under a URL prefix, set `REFRESH_COOKIE_PATH` to the
 browser-visible auth path. `REFRESH_COOKIE_SECURE` overrides the production
 default and should be `true` for HTTPS.
+
+## Docker development with production parity
+
+After the database and scraper worker stacks are running, use:
+
+```bash
+docker compose up -d --watch
+```
+
+Editing a tracked project file rebuilds and recreates the production image and
+runs pending Prisma migrations before starting it. There are no source-code or
+`.env` bind mounts in the container.
