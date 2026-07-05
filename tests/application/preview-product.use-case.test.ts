@@ -85,6 +85,25 @@ describe("PreviewProductUseCase", () => {
         expect(fetcher.fetch).not.toHaveBeenCalled();
     });
 
+    test("routes an unknown public retailer through generic AI extraction", async () => {
+        const { fetcher } = createSubject();
+        const aiPreview = { ...preview, retailer: "colori.ca" };
+        const aiIntegration = { preview: vi.fn(async () => aiPreview) };
+        const subject = new PreviewProductUseCase(
+            new RetailerRegistry([]),
+            fetcher,
+            aiIntegration
+        );
+        const url = new URL(
+            "https://colori.ca/en/collections/robes-et-combinaisons-jumpsuits-dresses"
+        );
+
+        await expect(
+            subject.execute({ url: url.href, extractionMode: "ai_only" })
+        ).resolves.toEqual(aiPreview);
+        expect(aiIntegration.preview).toHaveBeenCalledWith(url);
+    });
+
     test("rejects a final URL outside the retailer profile", async () => {
         const { subject, extractor } = createSubject({
             finalUrl: "https://evil.example/products/example",
@@ -106,7 +125,7 @@ describe("PreviewProductUseCase", () => {
         );
     });
 
-    test.each([undefined, "standard", "ai_fallback", "ai_only"] as const)(
+    test.each([undefined, "standard", "ai_fallback"] as const)(
         "uses deterministic extraction for mode %s",
         async (extractionMode) => {
             const { subject, extractor } = createSubject();

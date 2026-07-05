@@ -1,8 +1,6 @@
 import type { ProductPreview } from "../../domain/product/product-preview";
-import type { RetailerId } from "../../domain/product/retailer-id";
-
 export type ProductExtractionInput = {
-    retailerId: RetailerId;
+    retailerId: string;
     requestedUrl: string;
     finalUrl: string;
     html: string;

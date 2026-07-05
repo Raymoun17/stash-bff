@@ -24,8 +24,8 @@ export class UnsupportedSourceError extends ProductIntegrationError {
 }
 
 export class ProductDataUnavailableError extends ProductIntegrationError {
-    constructor(message = "Product data could not be extracted") {
-        super("PRODUCT_DATA_UNAVAILABLE", message);
+    constructor(message = "Product data could not be extracted", cause?: unknown) {
+        super("PRODUCT_DATA_UNAVAILABLE", message, { cause });
     }
 }
 
