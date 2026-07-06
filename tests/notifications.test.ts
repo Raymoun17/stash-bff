@@ -25,6 +25,7 @@ describe("Notifications API", () => {
                 title: "Notification Test Product",
                 currentPrice: 80,
                 currency: "CAD",
+                extractionMode: "standard",
             }),
         });
         itemId = created.json.data.id;

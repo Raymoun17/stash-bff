@@ -1,4 +1,4 @@
-import type { ProductContentFetcher } from "../../../domain/product/product-content";
+import type { ProductContentSource } from "../../../domain/product/product-content";
 import type { ProductPreview } from "../../../domain/product/product-preview";
 import { validateProductPreview } from "../../../application/product-preview/preview-product.validator";
 import type { ProductExtractor } from "../product-extractor";
@@ -10,18 +10,13 @@ import {
 import type { RetailerProfile } from "../../retailers/retailer-profile";
 
 export class AiProductIntegration {
-    constructor(
-        private readonly fetcher: ProductContentFetcher,
-        private readonly extractor: ProductExtractor
-    ) {}
+    constructor(private readonly extractor: ProductExtractor) {}
 
-    async preview(url: URL): Promise<ProductPreview> {
+    async preview(
+        source: ProductContentSource,
+        url: URL
+    ): Promise<ProductPreview> {
         const profile = createAiProfile(url);
-        const source = await this.fetcher.fetch(url, {
-            allowedNavigationHosts: profile.hosts,
-            waitUntil: "commit",
-            renderDelayMs: 3_000,
-        });
         const finalUrl = parseFinalUrl(source.finalUrl);
         if (!profile.isValidFinalUrl(finalUrl)) {
             throw new ProductDataUnavailableError(
@@ -40,7 +35,7 @@ export class AiProductIntegration {
     }
 }
 
-function createAiProfile(url: URL): RetailerProfile {
+export function createAiProfile(url: URL): RetailerProfile {
     const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
     if (
         url.protocol !== "https:" ||

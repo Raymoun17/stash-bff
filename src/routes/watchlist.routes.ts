@@ -3,6 +3,7 @@ import { requireAuth } from "../middlewares/require-auth.middleware";
 import {
     createWatchlistItemSchema,
     previewWatchlistItemSchema,
+    updateWatchlistExtractionModeSchema,
 } from "../schemas/watchlist.schema";
 import { WatchlistService } from "../services/watchlist.service";
 import type { AppBindings } from "../types/hono";
@@ -110,6 +111,27 @@ export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
         return c.json({
             data: item,
         });
+    });
+
+    watchlistRoutes.patch("/:id/extraction-mode", async (c) => {
+        const parsed = updateWatchlistExtractionModeSchema.safeParse(
+            await c.req.json()
+        );
+        if (!parsed.success) {
+            return c.json({
+                error: {
+                    code: "VALIDATION_ERROR",
+                    message: "Invalid request body",
+                    issues: parsed.error.flatten(),
+                },
+            }, 400);
+        }
+        const item = await WatchlistService.updateExtractionMode(
+            c.get("user").id,
+            c.req.param("id"),
+            parsed.data
+        );
+        return c.json({ data: item });
     });
 
     watchlistRoutes.delete("/:id", async (c) => {

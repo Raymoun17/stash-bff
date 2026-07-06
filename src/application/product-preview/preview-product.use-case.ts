@@ -5,14 +5,14 @@ import {
     UnsupportedSourceError,
 } from "../../integrations/integration-error";
 import { aiProductExtractor } from "../../integrations/extractors/ai/ai-runtime";
-import { AiProductIntegration } from "../../integrations/extractors/ai/ai-product.integration";
+import { AiProductIntegration, createAiProfile } from "../../integrations/extractors/ai/ai-product.integration";
 import type { RetailerRegistry } from "../../integrations/retailers/retailer-registry";
 import type { ExtractionMode } from "./extraction-mode";
 import { validateProductPreview } from "./preview-product.validator";
 
 export type PreviewProductInput = {
     url: string;
-    extractionMode?: ExtractionMode;
+    extractionMode: ExtractionMode;
 };
 
 export interface PreviewProductExecutor {
@@ -24,19 +24,24 @@ export class PreviewProductUseCase implements PreviewProductExecutor {
         private readonly retailers: RetailerRegistry,
         private readonly fetcher: ProductContentFetcher,
         private readonly aiIntegration: Pick<AiProductIntegration, "preview"> = new AiProductIntegration(
-            fetcher,
             aiProductExtractor
         )
     ) {}
 
     async execute(input: PreviewProductInput): Promise<ProductPreview> {
-        const mode = input.extractionMode ?? "standard";
+        const mode = input.extractionMode;
         const requestedUrl = this.parseUrl(input.url);
         const profile = this.retailers.resolveKnown(requestedUrl);
 
         if (!profile) {
-            if (mode === "ai_only") {
-                return this.aiIntegration.preview(requestedUrl);
+            if (mode === "ai_only" || mode === "ai_fallback") {
+                const aiProfile = createAiProfile(requestedUrl);
+                const source = await this.fetcher.fetch(requestedUrl, {
+                    allowedNavigationHosts: aiProfile.hosts,
+                    waitUntil: "commit",
+                    renderDelayMs: 3_000,
+                });
+                return this.aiIntegration.preview(source, requestedUrl);
             }
             throw new UnsupportedSourceError(
                 this.retailers.unsupportedReason(requestedUrl)
@@ -63,21 +68,11 @@ export class PreviewProductUseCase implements PreviewProductExecutor {
             );
         }
 
-        const extractor = mode === "ai_only" ? aiProductExtractor : profile.extractor;
-
         let extracted: ProductPreview;
         try {
-            extracted = await extractor.extract({
-                retailerId: profile.id,
-                requestedUrl: source.requestedUrl,
-                finalUrl: source.finalUrl,
-                html: source.html,
-                bodyText: source.bodyText,
-                pageTitle: source.pageTitle,
-            });
-        } catch (error) {
-            if (mode === "ai_fallback" && error instanceof ProductDataUnavailableError) {
-                extracted = await aiProductExtractor.extract({
+            extracted = mode === "ai_only"
+                ? await this.aiIntegration.preview(source, requestedUrl)
+                : await profile.extractor.extract({
                     retailerId: profile.id,
                     requestedUrl: source.requestedUrl,
                     finalUrl: source.finalUrl,
@@ -85,6 +80,9 @@ export class PreviewProductUseCase implements PreviewProductExecutor {
                     bodyText: source.bodyText,
                     pageTitle: source.pageTitle,
                 });
+        } catch (error) {
+            if (mode === "ai_fallback" && error instanceof ProductDataUnavailableError) {
+                extracted = await this.aiIntegration.preview(source, requestedUrl);
             } else {
                 throw error;
             }

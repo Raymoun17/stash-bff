@@ -95,12 +95,14 @@ describe("Watchlist API", () => {
                 salePrice: 99.99,
                 currency: "CAD",
                 metadata: { source: "bun-test" },
+                extractionMode: "ai_fallback",
             }),
         });
 
         expect(created.status).toBe(201);
         expect(created.json.data.id).toBeDefined();
         expect(Number(created.json.data.salePrice)).toBeCloseTo(99.99);
+        expect(created.json.data.extractionMode).toBe("ai_fallback");
 
         const itemId = created.json.data.id;
         const listed = await client.request("/watchlist");
@@ -110,6 +112,14 @@ describe("Watchlist API", () => {
         expect(listed.json.data.some((item: { id: string }) => item.id === itemId)).toBe(true);
 
         const fetched = await client.request(`/watchlist/${itemId}`);
+
+        const updatedMode = await client.request(`/watchlist/${itemId}/extraction-mode`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ extractionMode: "ai_only" }),
+        });
+        expect(updatedMode.status).toBe(200);
+        expect(updatedMode.json.data.extractionMode).toBe("ai_only");
 
         expect(fetched.status).toBe(200);
         expect(fetched.json.data.id).toBe(itemId);

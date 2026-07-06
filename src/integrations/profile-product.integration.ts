@@ -32,7 +32,10 @@ export class ProfileProductIntegration implements ProductIntegration {
     }
 
     preview(url: URL) {
-        return this.previewProduct.execute({ url: url.href });
+        return this.previewProduct.execute({
+            url: url.href,
+            extractionMode: "standard",
+        });
     }
 
     async close() {

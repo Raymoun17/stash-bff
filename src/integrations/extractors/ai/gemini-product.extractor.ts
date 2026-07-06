@@ -5,7 +5,7 @@ import { ProductDataUnavailableError } from "../../integration-error";
 import type { ProductExtractionInput, ProductExtractor } from "../product-extractor";
 import { cleanProductHtml } from "./html-cleaner";
 
-export const GEMINI_PRODUCT_MODEL = "gemini-2.5-flash";
+export const GEMINI_PRODUCT_MODEL = "gemini-3.5-flash";
 export const PRODUCT_RESPONSE_JSON_SCHEMA = {
     type: "object",
     additionalProperties: false,

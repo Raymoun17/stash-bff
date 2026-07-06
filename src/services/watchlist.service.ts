@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import type { CreateWatchlistItemInput } from "../schemas/watchlist.schema";
+import type { CreateWatchlistItemInput, UpdateWatchlistExtractionModeInput } from "../schemas/watchlist.schema";
 import { NotFoundError } from "../lib/http-error";
 import { WatchlistRepository } from "../repositories/watchlist.repository";
 
@@ -15,6 +15,7 @@ export class WatchlistService {
             salePrice: input.salePrice ?? null,
             currency: input.currency ?? null,
             status: input.status ?? "active",
+            extractionMode: input.extractionMode,
             metadata: (input.metadata ?? null) as Prisma.InputJsonValue,
         });
     }
@@ -49,6 +50,20 @@ export class WatchlistService {
         return {
             deleted: true,
         };
+    }
+
+    static async updateExtractionMode(
+        userId: string,
+        watchlistItemId: string,
+        input: UpdateWatchlistExtractionModeInput
+    ) {
+        const item = await WatchlistRepository.updateExtractionModeByIdForUser(
+            watchlistItemId,
+            userId,
+            input.extractionMode
+        );
+        if (!item) throw new NotFoundError("Watchlist item not found");
+        return item;
     }
 
     static async getPriceHistory(userId: string, watchlistItemId: string) {
