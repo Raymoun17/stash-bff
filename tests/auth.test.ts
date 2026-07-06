@@ -6,6 +6,34 @@ import {
 } from "./helpers/api-client";
 
 describe("Auth API", () => {
+    test("mobile credentials rotate, revoke, and authorize protected routes", async () => {
+        const client = new ApiClient();
+        const username = uniqueUsername("mobile");
+        const registered = await client.request("/auth/mobile/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password: "password123" }) });
+        expect(registered.status).toBe(201);
+        expect(registered.json.data).toMatchObject({ user: { username } });
+        expect(registered.json.data.accessToken).toBeDefined();
+        expect(registered.json.data.refreshToken).toBeDefined();
+        expect(registered.headers.get("set-cookie")).toBeNull();
+
+        const loggedIn = await client.request("/auth/mobile/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password: "password123" }) });
+        const oldToken = loggedIn.json.data.refreshToken;
+        expect(loggedIn.status).toBe(200);
+        const list = await client.request("/watchlist");
+        expect(list.status).toBe(200);
+
+        const rotated = await client.request("/auth/mobile/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: oldToken }) });
+        expect(rotated.status).toBe(200);
+        expect(rotated.json.data.refreshToken).not.toBe(oldToken);
+        const reuse = await client.request("/auth/mobile/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: oldToken }) });
+        expect(reuse.status).toBe(401);
+
+        const currentToken = rotated.json.data.refreshToken;
+        const logout = await client.request("/auth/mobile/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: currentToken }) });
+        expect(logout.json.data.loggedOut).toBe(true);
+        const afterLogout = await client.request("/auth/mobile/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: currentToken }) });
+        expect(afterLogout.status).toBe(401);
+    });
     test("POST /auth/register creates a user and credentials", async () => {
         const client = new ApiClient();
         const username = uniqueUsername("register");
@@ -19,6 +47,7 @@ describe("Auth API", () => {
         expect(json.data.user.username).toBe(username);
         expect(json.data.accessToken).toBeDefined();
         expect(headers.get("set-cookie")).toContain("stash_refresh=");
+        expect(json.data.refreshToken).toBeUndefined();
     });
 
     test("POST /auth/login authenticates an existing user", async () => {

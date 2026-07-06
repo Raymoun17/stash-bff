@@ -10,6 +10,7 @@ import { defaultPreviewProductUseCase } from "./integrations/default.registry";
 import type { ProductIntegrationRegistry } from "./integrations/integration.registry";
 import { AppHTTPException } from "./lib/http-error";
 import authRoutes from "./routes/auth.routes";
+import mobileAuthRoutes from "./routes/mobile-auth.routes";
 import healthRoutes from "./routes/health.routes";
 import { createWatchlistRoutes } from "./routes/watchlist.routes";
 import type { AppBindings } from "./types/hono";
@@ -45,6 +46,7 @@ export function createApp() {
 
     app.route("/health", healthRoutes);
     app.route("/auth", authRoutes);
+    app.route("/auth/mobile", mobileAuthRoutes);
     app.route("/watchlist", createWatchlistRoutes(previewProduct));
     app.route("/notification-rules", notificationRuleRoutes);
     app.route("/notifications", notificationRoutes);
