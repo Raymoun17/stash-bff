@@ -1,10 +1,9 @@
 import type { ContentFetchOptions } from "../../domain/product/product-content";
 import type { ProductPreview } from "../../domain/product/product-preview";
-import type { RetailerId } from "../../domain/product/retailer-id";
 import type { ProductExtractor } from "../extractors/product-extractor";
 
 export type RetailerProfile = {
-    id: RetailerId;
+    id: string;
     displayName: string;
     hosts: readonly string[];
     supportsUrl(url: URL): boolean;

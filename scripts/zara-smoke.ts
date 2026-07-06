@@ -9,7 +9,10 @@ if (!url) {
 }
 
 try {
-    const preview = await defaultPreviewProductUseCase.execute({ url });
+    const preview = await defaultPreviewProductUseCase.execute({
+        url,
+        extractionMode: "standard",
+    });
     console.log(JSON.stringify(preview, null, 2));
 } finally {
     await defaultPreviewProductUseCase.close();

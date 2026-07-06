@@ -4,13 +4,15 @@ import {
     ProductDataUnavailableError,
     UnsupportedSourceError,
 } from "../../integrations/integration-error";
+import { aiProductExtractor } from "../../integrations/extractors/ai/ai-runtime";
+import { AiProductIntegration, createAiProfile } from "../../integrations/extractors/ai/ai-product.integration";
 import type { RetailerRegistry } from "../../integrations/retailers/retailer-registry";
 import type { ExtractionMode } from "./extraction-mode";
 import { validateProductPreview } from "./preview-product.validator";
 
 export type PreviewProductInput = {
     url: string;
-    extractionMode?: ExtractionMode;
+    extractionMode: ExtractionMode;
 };
 
 export interface PreviewProductExecutor {
@@ -20,23 +22,31 @@ export interface PreviewProductExecutor {
 export class PreviewProductUseCase implements PreviewProductExecutor {
     constructor(
         private readonly retailers: RetailerRegistry,
-        private readonly fetcher: ProductContentFetcher
+        private readonly fetcher: ProductContentFetcher,
+        private readonly aiIntegration: Pick<AiProductIntegration, "preview"> = new AiProductIntegration(
+            aiProductExtractor
+        )
     ) {}
 
     async execute(input: PreviewProductInput): Promise<ProductPreview> {
-        const mode = input.extractionMode ?? "standard";
+        const mode = input.extractionMode;
         const requestedUrl = this.parseUrl(input.url);
         const profile = this.retailers.resolveKnown(requestedUrl);
 
         if (!profile) {
+            if (mode === "ai_only" || mode === "ai_fallback") {
+                const aiProfile = createAiProfile(requestedUrl);
+                const source = await this.fetcher.fetch(requestedUrl, {
+                    allowedNavigationHosts: aiProfile.hosts,
+                    waitUntil: "commit",
+                    renderDelayMs: 3_000,
+                });
+                return this.aiIntegration.preview(source, requestedUrl);
+            }
             throw new UnsupportedSourceError(
                 this.retailers.unsupportedReason(requestedUrl)
             );
         }
-
-        // AI extraction is preparatory only. Until an AI extractor exists, both
-        // AI modes intentionally use the deterministic standard pipeline.
-        void mode;
 
         const source = await this.fetcher.fetch(requestedUrl, {
             ...profile.fetchOptions,
@@ -58,14 +68,25 @@ export class PreviewProductUseCase implements PreviewProductExecutor {
             );
         }
 
-        const extracted = await profile.extractor.extract({
-            retailerId: profile.id,
-            requestedUrl: source.requestedUrl,
-            finalUrl: source.finalUrl,
-            html: source.html,
-            bodyText: source.bodyText,
-            pageTitle: source.pageTitle,
-        });
+        let extracted: ProductPreview;
+        try {
+            extracted = mode === "ai_only"
+                ? await this.aiIntegration.preview(source, requestedUrl)
+                : await profile.extractor.extract({
+                    retailerId: profile.id,
+                    requestedUrl: source.requestedUrl,
+                    finalUrl: source.finalUrl,
+                    html: source.html,
+                    bodyText: source.bodyText,
+                    pageTitle: source.pageTitle,
+                });
+        } catch (error) {
+            if (mode === "ai_fallback" && error instanceof ProductDataUnavailableError) {
+                extracted = await this.aiIntegration.preview(source, requestedUrl);
+            } else {
+                throw error;
+            }
+        }
         const normalized =
             profile.normalizePreview?.(extracted, finalUrl) ?? extracted;
 

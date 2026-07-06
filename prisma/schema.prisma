@@ -6,6 +6,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ExtractionMode {
+  standard
+  ai_fallback
+  ai_only
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -45,6 +51,7 @@ model WatchlistItem {
   currency     String?
   status       String   @default("active")
   metadata     Json?
+  extractionMode ExtractionMode
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   lastRefreshAttemptAt DateTime?

@@ -6,7 +6,7 @@ import { NotificationEvaluator } from "./notification-evaluator.service";
 export type RefreshSummary = { processed: number; succeeded: number; failed: number };
 
 export class PriceRefreshService {
-    constructor(private readonly previewProduct: PreviewProductExecutor) {}
+    constructor(private readonly previewProduct: PreviewProductExecutor) { }
 
     async refreshAll(batchSize: number, concurrency: number): Promise<RefreshSummary> {
         const summary = { processed: 0, succeeded: 0, failed: 0 };
@@ -19,7 +19,10 @@ export class PriceRefreshService {
                     summary.processed++;
                     const attemptedAt = new Date();
                     try {
-                        const preview = await this.previewProduct.execute({ url: item.url });
+                        const preview = await this.previewProduct.execute({
+                            url: item.url,
+                            extractionMode: item.extractionMode,
+                        });
                         const effectivePrice = preview.salePrice ?? preview.currentPrice;
                         const rules = await NotificationRuleRepository.findEnabledByWatchlistItemId(item.id);
                         const evaluations = NotificationEvaluator.evaluate(

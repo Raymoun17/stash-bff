@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type ExtractionMode } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import type { RuleEvaluation } from "../domain/notifications/notification-condition";
 
@@ -13,6 +13,7 @@ type CreateWatchlistItemData = {
     currency?: string | null;
     status?: string;
     metadata?: Prisma.InputJsonValue | null;
+    extractionMode: ExtractionMode;
 };
 
 export class WatchlistRepository {
@@ -21,6 +22,15 @@ export class WatchlistRepository {
             orderBy: { id: "asc" },
             take,
             ...(afterId ? { cursor: { id: afterId }, skip: 1 } : {}),
+            select: {
+                id: true,
+                url: true,
+                extractionMode: true,
+                currentPrice: true,
+                salePrice: true,
+                currency: true,
+                status: true,
+            },
         });
     }
 
@@ -89,6 +99,7 @@ export class WatchlistRepository {
                 salePrice: data.salePrice ?? null,
                 currency: data.currency ?? null,
                 status: data.status ?? "active",
+                extractionMode: data.extractionMode,
                 metadata:
                     data.metadata === null || data.metadata === undefined
                         ? Prisma.JsonNull
@@ -114,6 +125,21 @@ export class WatchlistRepository {
                 id,
                 userId,
             },
+        });
+    }
+
+    static updateExtractionModeByIdForUser(
+        id: string,
+        userId: string,
+        extractionMode: ExtractionMode
+    ) {
+        return prisma.$transaction(async (tx) => {
+            const result = await tx.watchlistItem.updateMany({
+                where: { id, userId },
+                data: { extractionMode },
+            });
+            if (result.count === 0) return null;
+            return tx.watchlistItem.findUniqueOrThrow({ where: { id } });
         });
     }
 

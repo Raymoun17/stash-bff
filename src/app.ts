@@ -16,11 +16,7 @@ import type { AppBindings } from "./types/hono";
 import notificationRoutes from "./routes/notifications.routes";
 import notificationRuleRoutes from "./routes/notification-rules.routes";
 
-export type AppDependencies = {
-    previewProductUseCase?: PreviewProductExecutor;
-    /** @deprecated Inject previewProductUseCase in new tests and callers. */
-    productIntegrationRegistry?: ProductIntegrationRegistry;
-};
+
 
 const INTEGRATION_ERROR_STATUS: Record<
     ProductPreviewErrorCode,
@@ -33,16 +29,9 @@ const INTEGRATION_ERROR_STATUS: Record<
     INTEGRATION_TIMEOUT: 504,
 };
 
-export function createApp(dependencies: AppDependencies = {}) {
+export function createApp() {
     const app = new Hono<AppBindings>();
-    const previewProduct =
-        dependencies.previewProductUseCase ??
-        (dependencies.productIntegrationRegistry
-            ? {
-                  execute: ({ url }: { url: string }) =>
-                      dependencies.productIntegrationRegistry!.preview(url),
-              }
-            : defaultPreviewProductUseCase);
+    const previewProduct = defaultPreviewProductUseCase;
 
     const corsOrigins = process.env.CORS_ORIGINS?.split(",").filter(Boolean);
 

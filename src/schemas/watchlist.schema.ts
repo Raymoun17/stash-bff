@@ -1,10 +1,14 @@
 import { z } from "zod";
 
+export const extractionModeSchema = z.enum([
+    "standard",
+    "ai_fallback",
+    "ai_only",
+]);
+
 export const previewWatchlistItemSchema = z.object({
     url: z.url(),
-    extractionMode: z
-        .enum(["standard", "ai_fallback", "ai_only"])
-        .default("standard"),
+    extractionMode: extractionModeSchema,
 });
 
 export const createWatchlistItemSchema = z.object({
@@ -17,6 +21,11 @@ export const createWatchlistItemSchema = z.object({
     currency: z.string().nullable().optional(),
     status: z.string().optional(),
     metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+    extractionMode: extractionModeSchema,
+});
+
+export const updateWatchlistExtractionModeSchema = z.object({
+    extractionMode: extractionModeSchema,
 });
 
 export type PreviewWatchlistItemInput = z.infer<
@@ -25,4 +34,8 @@ export type PreviewWatchlistItemInput = z.infer<
 
 export type CreateWatchlistItemInput = z.infer<
     typeof createWatchlistItemSchema
+>;
+
+export type UpdateWatchlistExtractionModeInput = z.infer<
+    typeof updateWatchlistExtractionModeSchema
 >;
