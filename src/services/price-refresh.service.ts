@@ -2,11 +2,48 @@ import type { PreviewProductExecutor } from "../application/product-preview/prev
 import { WatchlistRepository } from "../repositories/watchlist.repository";
 import { NotificationRuleRepository } from "../repositories/notification-rule.repository";
 import { NotificationEvaluator } from "./notification-evaluator.service";
+import { NotFoundError } from "../lib/http-error";
 
 export type RefreshSummary = { processed: number; succeeded: number; failed: number };
 
 export class PriceRefreshService {
     constructor(private readonly previewProduct: PreviewProductExecutor) { }
+
+    async refreshOne(userId: string, itemId: string) {
+        const item = await WatchlistRepository.findByIdForUser(itemId, userId);
+        if (!item) {
+            throw new NotFoundError("Watchlist item not found");
+        }
+
+        const attemptedAt = new Date();
+        try {
+            const preview = await this.previewProduct.execute({
+                url: item.url,
+                extractionMode: item.extractionMode,
+            });
+            const effectivePrice = preview.salePrice ?? preview.currentPrice;
+            const rules = await NotificationRuleRepository.findEnabledByWatchlistItemId(item.id);
+            const evaluations = NotificationEvaluator.evaluate(
+                rules,
+                {
+                    effectivePrice: item.salePrice === null
+                        ? item.currentPrice === null ? null : Number(item.currentPrice)
+                        : Number(item.salePrice),
+                    currency: item.currency,
+                    status: item.status,
+                },
+                { effectivePrice, currency: preview.currency, status: preview.status }
+            );
+            return WatchlistRepository.recordRefreshSuccess(
+                item.id, preview, effectivePrice, attemptedAt, evaluations
+            );
+        } catch (cause) {
+            await WatchlistRepository.recordRefreshFailure(
+                item.id, sanitizeRefreshError(cause), attemptedAt
+            );
+            throw cause;
+        }
+    }
 
     async refreshAll(batchSize: number, concurrency: number): Promise<RefreshSummary> {
         const summary = { processed: 0, succeeded: 0, failed: 0 };

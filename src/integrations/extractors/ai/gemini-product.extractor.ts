@@ -5,7 +5,8 @@ import { ProductDataUnavailableError } from "../../integration-error";
 import type { ProductExtractionInput, ProductExtractor } from "../product-extractor";
 import { cleanProductHtml } from "./html-cleaner";
 
-export const GEMINI_PRODUCT_MODEL = "gemini-3.5-flash";
+export const GEMINI_PRODUCT_MODEL =
+    process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash";
 export const PRODUCT_RESPONSE_JSON_SCHEMA = {
     type: "object",
     additionalProperties: false,
@@ -110,12 +111,14 @@ export class GeminiProductExtractor implements ProductExtractor {
                 metadata: { extractionMethod: "ai", model: GEMINI_PRODUCT_MODEL },
             };
         } catch (cause) {
+            const diagnostic = getSafeErrorDiagnostic(cause);
             console.warn("AI product extraction failed", {
                 retailer: input.retailerId,
                 target,
                 model: GEMINI_PRODUCT_MODEL,
                 durationMs: Date.now() - startedAt,
                 errorType: cause instanceof Error ? cause.name : "UnknownError",
+                ...diagnostic,
             });
             if (cause instanceof ProductDataUnavailableError) throw cause;
             throw new ProductDataUnavailableError(
@@ -136,6 +139,23 @@ export class GeminiProductExtractor implements ProductExtractor {
         this.client = this.createClient(apiKey);
         return this.client;
     }
+}
+
+function getSafeErrorDiagnostic(cause: unknown) {
+    const candidate = cause as {
+        status?: unknown;
+        code?: unknown;
+        message?: unknown;
+    };
+    return {
+        apiStatus: typeof candidate?.status === "number" ? candidate.status : undefined,
+        apiCode: typeof candidate?.code === "string" || typeof candidate?.code === "number"
+            ? String(candidate.code).slice(0, 80)
+            : undefined,
+        errorMessage: typeof candidate?.message === "string"
+            ? candidate.message.replace(/[\r\n\t]+/g, " ").slice(0, 500)
+            : undefined,
+    };
 }
 
 function safeUrlForLog(rawUrl: string) {
