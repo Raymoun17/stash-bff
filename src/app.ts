@@ -34,12 +34,14 @@ export function createApp() {
     const app = new Hono<AppBindings>();
     const previewProduct = defaultPreviewProductUseCase;
 
-    const corsOrigins = process.env.CORS_ORIGINS?.split(",").filter(Boolean);
+    const corsOrigins = process.env.CORS_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean);
 
     app.use(
         "*",
         cors({
-            origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
+            origin: (origin) => corsOrigins && corsOrigins.length > 0
+                ? corsOrigins.includes(origin) ? origin : ""
+                : origin,
             credentials: true,
         })
     );
