@@ -18,5 +18,9 @@ export const loginSchema = z.object({
     password: z.string().min(1).max(128),
 });
 
+export const mobileRefreshTokenSchema = z.object({
+    refreshToken: z.string().min(1).max(512),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
