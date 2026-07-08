@@ -22,7 +22,8 @@ CMD ["npm", "run", "dev"]
 
 FROM source AS build
 
-RUN npm run build
+RUN test -s prompts/product-extraction.md \
+    && npm run build
 
 FROM source AS migrate
 
