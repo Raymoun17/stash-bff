@@ -12,6 +12,7 @@ import { defaultPreviewProductUseCase } from "../integrations/default.registry";
 import { createNotificationRuleSchema } from "../schemas/notification-rule.schema";
 import { NotificationRuleService } from "../services/notification-rule.service";
 import { PriceRefreshService } from "../services/price-refresh.service";
+import { CollectionService } from "../services/collection.service";
 
 export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
     const watchlistRoutes = new Hono<AppBindings>();
@@ -101,6 +102,11 @@ export function createWatchlistRoutes(previewProduct: PreviewProductExecutor) {
     watchlistRoutes.get("/:id/notification-rules", async (c) => {
         const rules = await NotificationRuleService.list(c.get("user").id, c.req.param("id"));
         return c.json({ data: rules, meta: { count: rules.length } });
+    });
+
+    watchlistRoutes.get("/:id/collections", async (c) => {
+        await WatchlistService.getById(c.get("user").id, c.req.param("id"));
+        return c.json({ data: await CollectionService.memberships(c.get("user").id, c.req.param("id")) });
     });
 
     watchlistRoutes.post("/:id/notification-rules", async (c) => {

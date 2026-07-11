@@ -16,6 +16,7 @@ import { createWatchlistRoutes } from "./routes/watchlist.routes";
 import type { AppBindings } from "./types/hono";
 import notificationRoutes from "./routes/notifications.routes";
 import notificationRuleRoutes from "./routes/notification-rules.routes";
+import collectionRoutes from "./routes/collections.routes";
 
 
 
@@ -52,6 +53,7 @@ export function createApp() {
     app.route("/watchlist", createWatchlistRoutes(previewProduct));
     app.route("/notification-rules", notificationRuleRoutes);
     app.route("/notifications", notificationRoutes);
+    app.route("/collections", collectionRoutes);
 
     app.notFound((c) => {
         return c.json(
