@@ -11,7 +11,7 @@ services:
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:-postgresql://admin:admin@${DB_HOST_ALIAS:-db}:${DB_PORT:-5432}/${POSTGRES_DB:-stash}}
       JWT_SECRET: ${JWT_SECRET:-stash-local-jwt-secret-change-in-production}
-      REFRESH_COOKIE_PATH: /api/auth
+      REFRESH_COOKIE_PATH: ${REFRESH_COOKIE_PATH:-/auth}
       REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
       SCRAPER_MODE: remote
       SCRAPER_WORKER_URL: ${SCRAPER_WORKER_URL:-http://${SCRAPER_HOST_ALIAS:-scraper-worker}:${SCRAPER_PORT:-8000}}
